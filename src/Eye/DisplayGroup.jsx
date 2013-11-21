@@ -6,6 +6,7 @@ import "../BasicTypes.jsx";
 import "DisplayNode.jsx";
 import "Layer.jsx";
 import "Stream.jsx";
+import "RenderingContext.jsx";
 
 /**
  * DisplayGroup class
@@ -165,7 +166,7 @@ class DisplayGroup extends DisplayNode {
 			this._children[i]._addDirtyRectangle();
 		}
 	}
-	override function _render(ctx: CanvasRenderingContext2D, stream: Stream = null): void {
+	override function _render(ctx: CanvasRenderingContext2D, context: RenderingContext): void {
 		/*
 		if(this.shape) {
 			Tombo.warn("[DisplayGroup#render] not implemented: clipping");

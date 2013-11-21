@@ -6,6 +6,7 @@ import "Shape.jsx";
 import "Layer.jsx";
 import "Eye.jsx";
 import "DisplayGroup.jsx";
+import "RenderingContext.jsx";
 import "../Tombo.jsx";
 import "../BasicTypes.jsx";
 
@@ -527,74 +528,12 @@ class DisplayNode {
 		return false;
 	}
 
-	function _render(ctx: CanvasRenderingContext2D, stream: Stream = null): void {
+	function _render(ctx: CanvasRenderingContext2D, context: RenderingContext): void {
 		if (this._invisible()) {
 			return;
 		}
-		var canvas = null: HTMLCanvasElement;
 		var color = this._getCompositeColor();
-		if(this.shape.isImage && color != Color.createRGB(255, 255, 255)) {
-			if(stream) {
-				// this._json.push("transcolor:TODO");
-			} else {
-				// TODO: caching
-				var width = this.shape.bounds.width;
-				var height = this.shape.bounds.height;
-				
-				canvas = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
-				canvas.width = width;
-				canvas.height = height;
-				var cctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-				this.shape.draw(cctx, color);
-				
-				// create alpha canvas
-				var ac = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
-				ac.width = width;
-				ac.height = height;
-				var actx = ac.getContext("2d") as CanvasRenderingContext2D;
-				actx.drawImage(canvas, 0, 0);
-				actx.globalCompositeOperation = "source-atop";
-				actx.fillStyle = "rgba(255,255,255,1)";
-				actx.fillRect(0, 0, width, height);
-				
-				// create ouput canvas
-				var oc = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
-				oc.width = width;
-				oc.height = height;
-				var octx = oc.getContext("2d") as CanvasRenderingContext2D;
-				octx.globalCompositeOperation = "lighter";
-				
-				// breakdown RGB and compose
-				var filters = [Color.createRGB(0, 0, 255), Color.createRGB(0, 255, 0), Color.createRGB(255, 0, 0)]; // order (B-> G-> R) is important
-				
-				for(var i = 0; i < 3; i++) {
-					var ec = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
-					ec.width = width;
-					ec.height = height;
-					var ectx = ec.getContext("2d") as CanvasRenderingContext2D;
-					ectx.drawImage(canvas, 0, 0);
-					
-					ectx.globalCompositeOperation = "darker";
-					ectx.fillStyle = Color.stringify(filters[i]);
-					ectx.fillRect(0, 0, width, height);
-					
-					color >>= 8;
-					var alpha = 1 - (color & 0xFF) / 255;
-					ectx.globalCompositeOperation = "source-over";
-					ectx.globalAlpha = alpha;
-					ectx.fillStyle = "#000";
-					ectx.fillRect(0, 0, width, height);
-					
-					octx.drawImage(ec, 0, 0); // with lighter
-				}
-				// alpha mask
-				octx.globalCompositeOperation = "destination-in";
-				octx.globalAlpha = 1;
-				octx.drawImage(ac, 0, 0);
-				
-				canvas = oc;
-			}
-		}
+		var canvas = context.setDisplayNodeColor(this, color);
 
 		if(Layer.USE_NEW_RENDERER) {
 			// We have to draw this object:
@@ -607,32 +546,9 @@ class DisplayNode {
 			if(!this._layer.hasIntersection(this._renderRect)) {
 				return;
 			}
-			if(this._dirty) {
-				if (! Eye.useStreaming()) {
-					this._calcRenderRect();
-				}
-			}
 
-			if (stream) {
-				stream.sendDisplayNode(this);
-				return;
-			}
-
-			this._dirty = false;
-			this._beginPaint(ctx, stream);
-			if(canvas) {
-				if(!stream) {
-					ctx.drawImage(canvas, 0, 0);
-				}
-			} else {
-				if(stream) {
-					// serialize the Shape, send it to stream
-					stream.sendShape(this._layer._id, this._id, this.shape);
-				} else {
-					this.shape.draw(ctx, color);
-				}
-			}
-			this._endPaint(ctx, stream);
+			context.renderDisplayNode1st(this);
+			context.renderDisplayNode2nd(this, canvas, color);
 			return;
 		}
 		ctx.save();

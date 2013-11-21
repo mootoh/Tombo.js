@@ -1,9 +1,11 @@
+import "js.jsx";
 import "js/web.jsx";
-import "Stream.jsx";
 import "Eye/Layer.jsx";
 import "Eye/DisplayNode.jsx";
-import "Tombo.jsx";
 import "Eye/Eye.jsx";
+import "BasicTypes.jsx";
+import "Stream.jsx";
+import "Tombo.jsx";
 
 /**
  * Rendering context abstraction (HTMLCanvas | Stream)
@@ -30,6 +32,12 @@ __export__ abstract class RenderingContext {
 	abstract function clearRect(x : number/*unrestricted double*/, y : number/*unrestricted double*/, w : number/*unrestricted double*/, h : number/*unrestricted double*/) : void;
 	abstract function fillRect(x : number/*unrestricted double*/, y : number/*unrestricted double*/, w : number/*unrestricted double*/, h : number/*unrestricted double*/) : void;
 	abstract function setFillStyle(style: string): void;
+
+	// DisplayNode
+	abstract function setDisplayNodeColor(node: DisplayNode, color: int): HTMLCanvasElement;
+	abstract function renderDisplayNode1st(node: DisplayNode): void;
+	abstract function renderDisplayNode2nd(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void;
+	abstract function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void;
 }
 
 class CanvasRenderingContext extends RenderingContext {
@@ -94,7 +102,7 @@ class CanvasRenderingContext extends RenderingContext {
 	override function renderBins(layer: Layer, bins: Array.<Array.<DisplayNode>>): void {
 		bins.forEach(function(bin) {
 			for(var j = 0; j < bin.length; j++) {
-				bin[j]._render(layer._ctx, null);
+				bin[j]._render(layer._ctx, this);
 			}
 		});
 		layer._ctx.restore();
@@ -117,6 +125,93 @@ class CanvasRenderingContext extends RenderingContext {
 		}
 
 		layer._ctx.clip();
+	}
+
+	override function setDisplayNodeColor(node: DisplayNode, color: int): HTMLCanvasElement {
+		if(!node.shape.isImage || color == Color.createRGB(255, 255, 255)) {
+			return null;
+		}
+
+		// TODO: caching
+		var width = node.shape.bounds.width;
+		var height = node.shape.bounds.height;
+
+		var canvas = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
+		canvas.width = width;
+		canvas.height = height;
+		var cctx = canvas.getContext("2d") as CanvasRenderingContext2D;
+		node.shape.draw(cctx, color);
+
+		// create alpha canvas
+		var ac = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
+		ac.width = width;
+		ac.height = height;
+		var actx = ac.getContext("2d") as CanvasRenderingContext2D;
+		actx.drawImage(canvas, 0, 0);
+		actx.globalCompositeOperation = "source-atop";
+		actx.fillStyle = "rgba(255,255,255,1)";
+		actx.fillRect(0, 0, width, height);
+
+		// create ouput canvas
+		var oc = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
+		oc.width = width;
+		oc.height = height;
+		var octx = oc.getContext("2d") as CanvasRenderingContext2D;
+		octx.globalCompositeOperation = "lighter";
+
+		// breakdown RGB and compose
+		var filters = [Color.createRGB(0, 0, 255), Color.createRGB(0, 255, 0), Color.createRGB(255, 0, 0)]; // order (B-> G-> R) is important
+
+		for(var i = 0; i < 3; i++) {
+			var ec = dom.createElement("canvas") as __noconvert__ HTMLCanvasElement;
+			ec.width = width;
+			ec.height = height;
+			var ectx = ec.getContext("2d") as CanvasRenderingContext2D;
+			ectx.drawImage(canvas, 0, 0);
+
+			ectx.globalCompositeOperation = "darker";
+			ectx.fillStyle = Color.stringify(filters[i]);
+			ectx.fillRect(0, 0, width, height);
+
+			color >>= 8;
+			var alpha = 1 - (color & 0xFF) / 255;
+			ectx.globalCompositeOperation = "source-over";
+			ectx.globalAlpha = alpha;
+			ectx.fillStyle = "#000";
+			ectx.fillRect(0, 0, width, height);
+
+			octx.drawImage(ec, 0, 0); // with lighter
+		}
+		// alpha mask
+		octx.globalCompositeOperation = "destination-in";
+		octx.globalAlpha = 1;
+		octx.drawImage(ac, 0, 0);
+
+		return oc;
+	}
+
+	override function renderDisplayNode1st(node: DisplayNode): void {
+		if(node._dirty) {
+			node._calcRenderRect();
+		}
+	}
+
+	override function renderDisplayNode2nd(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {
+		var ctx = node._layer._ctx;
+		node._dirty = false;
+		node._beginPaint(ctx, null);
+		if(canvas) {
+			ctx.drawImage(canvas, 0, 0);
+		} else {
+			node.shape.draw(ctx, color);
+		}
+		node._endPaint(ctx, null);
+	}
+
+	override function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void {
+		// TODO(hbono): Is it faster to cache the current transform?
+		var matrix = transform.getMatrix();
+		js.invoke(layer._ctx, "setTransform", matrix as __noconvert__ variant[]);
 	}
 }
 
@@ -177,7 +272,7 @@ class StreamRenderingContext extends RenderingContext {
 
 		bins.forEach(function(bin) {
 			for(var j = 0; j < bin.length; j++) {
-				bin[j]._render(layer._ctx, this._stream);
+				bin[j]._render(layer._ctx, this);
 			}
 		});
 
@@ -190,6 +285,24 @@ class StreamRenderingContext extends RenderingContext {
 
 	override function clipDirtyRegions(layer: Layer): void {
 		// do nothing for stream
+	}
+
+	override function setDisplayNodeColor(node: DisplayNode, color: int): HTMLCanvasElement {
+		// this._json.push("transcolor:TODO");
+		return null;
+	}
+
+	override function renderDisplayNode1st(node: DisplayNode): void {
+		this._stream.sendDisplayNode(node);
+	}
+
+	override function renderDisplayNode2nd(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {
+	}
+
+	override function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void {
+		// TODO(hbono): Is it faster to cache the current transform?
+		var matrix = transform.getMatrix();
+		this._stream.sendSetTransform(layer._id, lastUpdatedFrame, matrix[0] * layer.layout.scale, matrix[1] * layer.layout.scale, matrix[2] * layer.layout.scale, matrix[3] * layer.layout.scale, matrix[4] * layer.layout.scale, matrix[5] * layer.layout.scale);
 	}
 }
 
