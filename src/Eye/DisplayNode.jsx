@@ -462,61 +462,6 @@ class DisplayNode {
 		this._compositeOperation = operation;
 	}
 
-	function _beginPaint(context: CanvasRenderingContext2D, stream: Stream = null): void {
-		if(DisplayNode.USE_RENDER_TRANSFORM) {
-			if(stream) {
-				this._layer.setTransform(this._getRenderTransform(), this._lastChangedFrame, stream);
-			} else {
-				this._layer.setCompositeOperation(this._compositeOperation);
-				this._layer.setAlpha(this._getCompositeAlpha());
-				this._layer.setTransform(this._getRenderTransform(), this._lastChangedFrame);
-			}
-			return;
-		}
-		if(stream) {
-			stream.sendSave(this._layer._id);
-			if(this._compositeOperation) {
-				stream.sendCompositeOperation(this._layer._id, this._compositeOperation);
-			}
-			var matrix = this.getCompositeTransform().getMatrix();
-
-			stream.sendMatrix(this._layer._id, matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
-			if(this._anchorX || this._anchorY) {
-				stream.sendMatrix(this._layer._id, 1, 0, 0, 1, -this._anchorX, -this._anchorY);
-			}
-			stream.sendAlpha(this._layer._id, this._getCompositeAlpha());
-		} else {
-			context.save();
-			this._oldOperation = this._compositeOperation? context.globalCompositeOperation: "";
-			if(this._compositeOperation) {
-				context.globalCompositeOperation = this._compositeOperation;
-			}
-			var matrix = this.getCompositeTransform().getMatrix();
-			js.invoke(context, "transform", matrix as __noconvert__ variant[]);
-			if(this._anchorX || this._anchorY) {
-				context.transform(1, 0, 0, 1, -this._anchorX, -this._anchorY);
-			}
-			context.globalAlpha = this._getCompositeAlpha();
-		}
-	}
-
-	function _endPaint(context: CanvasRenderingContext2D, stream: Stream = null): void {
-		if(DisplayNode.USE_RENDER_TRANSFORM) {
-			return;
-		}
-		if(stream) {
-			if(this._compositeOperation) {
-				stream.sendCompositeOperation(this._layer._id, this._compositeOperation);
-			}
-			stream.sendRestore(this._layer._id);
-		} else {
-			if(this._compositeOperation) {
-				context.globalCompositeOperation = this._oldOperation;
-			}
-			context.restore();
-		}
-	}
-
 	function _invisible(): boolean {
 		var node = this;
 		while(node) {
@@ -567,27 +512,12 @@ class DisplayNode {
 		}
 		
 		ctx.globalAlpha = this._getCompositeAlpha();
-		if(canvas) {
-			ctx.drawImage(canvas, 0, 0);
-		} else {
-			this.shape.draw(ctx, color);
-		}
+		context.drawShape(this, canvas, color);
 		
 		if(this._compositeOperation) {
 			ctx.globalCompositeOperation = oldOperation;
 		}
 		ctx.restore();
-	}
-
-	function _sendTransformAndShape(ctx: CanvasRenderingContext2D, stream: Stream = null): void {
-		if (! stream || this._invisible() || !this._layer.hasIntersection(this._renderRect)) {
-			return;
-		}
-		this._dirty = false;
-		this._beginPaint(ctx, stream);
-		stream.sendShape(this._layer._id, this._id, this.shape);
-		this.shape.dirty = false;
-		this._endPaint(ctx, stream);
 	}
 
 	/**

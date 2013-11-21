@@ -38,6 +38,11 @@ __export__ abstract class RenderingContext {
 	abstract function renderDisplayNode1st(node: DisplayNode): void;
 	abstract function renderDisplayNode2nd(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void;
 	abstract function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void;
+	abstract function _beginPaintDisplayNode(node: DisplayNode): void;
+	abstract function _endPaintDisplayNode(node: DisplayNode): void;
+
+	// Shape
+	abstract function drawShape(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void ;
 }
 
 class CanvasRenderingContext extends RenderingContext {
@@ -196,22 +201,61 @@ class CanvasRenderingContext extends RenderingContext {
 		}
 	}
 
+	override function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void {
+		// TODO(hbono): Is it faster to cache the current transform?
+		var matrix = transform.getMatrix();
+		js.invoke(layer._ctx, "setTransform", matrix as __noconvert__ variant[]);
+	}
+
+	override function _beginPaintDisplayNode(node: DisplayNode): void {
+		var context = node._layer._ctx;
+
+		if(DisplayNode.USE_RENDER_TRANSFORM) {
+			node._layer.setCompositeOperation(node._compositeOperation);
+			node._layer.setAlpha(node._getCompositeAlpha());
+			node._layer.setTransform(node._getRenderTransform(), node._lastChangedFrame);
+			return;
+		}
+
+		context.save();
+		node._oldOperation = node._compositeOperation? context.globalCompositeOperation: "";
+		if(node._compositeOperation) {
+			context.globalCompositeOperation = node._compositeOperation;
+		}
+		var matrix = node.getCompositeTransform().getMatrix();
+		js.invoke(context, "transform", matrix as __noconvert__ variant[]);
+		if(node._anchorX || node._anchorY) {
+			context.transform(1, 0, 0, 1, -node._anchorX, -node._anchorY);
+		}
+		context.globalAlpha = node._getCompositeAlpha();
+	}
+
+	override function _endPaintDisplayNode(node: DisplayNode): void {
+		if(DisplayNode.USE_RENDER_TRANSFORM) {
+			return;
+		}
+
+		var context = node._layer._ctx;
+		if(node._compositeOperation) {
+			context.globalCompositeOperation = node._oldOperation;
+		}
+		context.restore();
+	}
+
 	override function renderDisplayNode2nd(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {
-		var ctx = node._layer._ctx;
 		node._dirty = false;
-		node._beginPaint(ctx, null);
+		this._beginPaintDisplayNode(node);
+		this.drawShape(node, canvas, color);
+		this._endPaintDisplayNode(node);
+	}
+
+	override function drawShape(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {
+		var ctx = node._layer._ctx;
 		if(canvas) {
 			ctx.drawImage(canvas, 0, 0);
 		} else {
 			node.shape.draw(ctx, color);
 		}
-		node._endPaint(ctx, null);
-	}
-
-	override function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void {
-		// TODO(hbono): Is it faster to cache the current transform?
-		var matrix = transform.getMatrix();
-		js.invoke(layer._ctx, "setTransform", matrix as __noconvert__ variant[]);
 	}
 }
 
@@ -267,6 +311,18 @@ class StreamRenderingContext extends RenderingContext {
 		this._stream.sendDisplayNodeIds(ids);
 	}
 
+	function _sendTransformAndShape(node: DisplayNode): void {
+		if (node._invisible() || !node._layer.hasIntersection(node._renderRect)) {
+			return;
+		}
+		node._dirty = false;
+		this._beginPaintDisplayNode(node);
+		this.drawShape(node, null, -1);
+		node.shape.dirty = false;
+		this._endPaintDisplayNode(node);
+	}
+
+
 	override function renderBins(layer: Layer, bins: Array.<Array.<DisplayNode>>): void {
 		this._sendDisplayNodeIds(bins);
 
@@ -278,7 +334,7 @@ class StreamRenderingContext extends RenderingContext {
 
 		bins.forEach(function(bin) {
 			for(var j = 0; j < bin.length; j++) {
-				bin[j]._sendTransformAndShape(layer._ctx, this._stream);
+				this._sendTransformAndShape(bin[j]);
 			}
 		});
 	}
@@ -303,6 +359,41 @@ class StreamRenderingContext extends RenderingContext {
 		// TODO(hbono): Is it faster to cache the current transform?
 		var matrix = transform.getMatrix();
 		this._stream.sendSetTransform(layer._id, lastUpdatedFrame, matrix[0] * layer.layout.scale, matrix[1] * layer.layout.scale, matrix[2] * layer.layout.scale, matrix[3] * layer.layout.scale, matrix[4] * layer.layout.scale, matrix[5] * layer.layout.scale);
+	}
+
+	override function _beginPaintDisplayNode(node: DisplayNode): void {
+		if(DisplayNode.USE_RENDER_TRANSFORM) {
+			node._layer.setTransform(node._getRenderTransform(), node._lastChangedFrame, this._stream);
+			return;
+		}
+
+		this._stream.sendSave(node._layer._id);
+		if(node._compositeOperation) {
+			this._stream.sendCompositeOperation(node._layer._id, node._compositeOperation);
+		}
+		var matrix = node.getCompositeTransform().getMatrix();
+
+		this._stream.sendMatrix(node._layer._id, matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5]);
+		if(node._anchorX || node._anchorY) {
+			this._stream.sendMatrix(node._layer._id, 1, 0, 0, 1, -node._anchorX, -node._anchorY);
+		}
+		this._stream.sendAlpha(node._layer._id, node._getCompositeAlpha());
+	}
+
+	override function _endPaintDisplayNode(node: DisplayNode): void {
+		if(DisplayNode.USE_RENDER_TRANSFORM) {
+			return;
+		}
+
+		if(node._compositeOperation) {
+			this._stream.sendCompositeOperation(node._layer._id, node._compositeOperation);
+		}
+
+		this._stream.sendRestore(node._layer._id);
+	}
+
+	override function drawShape(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {
+		this._stream.sendShape(node._layer._id, node._id, node.shape);
 	}
 }
 
