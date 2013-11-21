@@ -26,7 +26,6 @@ __export__ abstract class RenderingContext {
 	// Layer
 	abstract function beginLayer(layer: Layer): void;
 	abstract function endLayer(layer: Layer): void;
-	abstract function renderBins(layer: Layer, bins: Array.<Array.<DisplayNode>>): void;
 	abstract function clipDirtyRegions(layer: Layer): void;
 
 	abstract function clearRect(x : number/*unrestricted double*/, y : number/*unrestricted double*/, w : number/*unrestricted double*/, h : number/*unrestricted double*/) : void;
@@ -35,6 +34,7 @@ __export__ abstract class RenderingContext {
 
 	// DisplayNode
 	abstract function setDisplayNodeColor(node: DisplayNode, color: int): HTMLCanvasElement;
+	abstract function renderBins(bins: Array.<Array.<DisplayNode>>): void;
 	abstract function renderDisplayNode1st(node: DisplayNode): void;
 	abstract function renderDisplayNode2nd(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void;
 	abstract function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void;
@@ -106,7 +106,7 @@ class CanvasRenderingContext extends RenderingContext {
 		// nothing has to be done here
 	}
 
-	override function renderBins(layer: Layer, bins: Array.<Array.<DisplayNode>>): void {
+	override function renderBins(bins: Array.<Array.<DisplayNode>>): void {
 		bins.forEach(function(bin) {
 			for(var j = 0; j < bin.length; j++) {
 				bin[j]._render(this);
@@ -324,7 +324,7 @@ class StreamRenderingContext extends RenderingContext {
 	}
 
 
-	override function renderBins(layer: Layer, bins: Array.<Array.<DisplayNode>>): void {
+	override function renderBins(bins: Array.<Array.<DisplayNode>>): void {
 		this._sendDisplayNodeIds(bins);
 
 		bins.forEach(function(bin) {

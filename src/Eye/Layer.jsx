@@ -310,7 +310,7 @@ class Layer {
 				}));
 			}
 
-			context.renderBins(this, bins);
+			context.renderBins(bins);
 
 			this._dirtyRegions = [] : Array.<Array.<number>>;
 			if(this.forceRedraw) {
