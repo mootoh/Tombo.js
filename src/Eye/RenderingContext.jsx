@@ -213,7 +213,7 @@ class CanvasRenderingContext extends RenderingContext {
 		if(DisplayNode.USE_RENDER_TRANSFORM) {
 			node._layer.setCompositeOperation(node._compositeOperation);
 			node._layer.setAlpha(node._getCompositeAlpha());
-			node._layer.setTransform(node._getRenderTransform(), node._lastChangedFrame);
+			this.setTransform(node._getRenderTransform(), node._layer, node._lastChangedFrame);
 			return;
 		}
 
@@ -363,7 +363,7 @@ class StreamRenderingContext extends RenderingContext {
 
 	override function _beginPaintDisplayNode(node: DisplayNode): void {
 		if(DisplayNode.USE_RENDER_TRANSFORM) {
-			node._layer.setTransform(node._getRenderTransform(), node._lastChangedFrame, this._stream);
+			this.setTransform(node._getRenderTransform(), node._layer, node._lastChangedFrame);
 			return;
 		}
 
