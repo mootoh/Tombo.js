@@ -333,7 +333,7 @@ class Layer {
 				this._dirtyDrawBins[binIndex] = false;
 			}
 			for(var j = 0; j < bin.length; j++) {
-				bin[j]._render(this._ctx, null);
+				bin[j]._render(context);
 			}
 		}
 		

@@ -83,6 +83,8 @@ class CanvasRenderingContext extends RenderingContext {
 	}
 
 	override function endLayer(layer: Layer): void {
+		layer._ctx.restore();
+
 		// check layout and set proper transform
 		var width = layer.layout.clientWidth;
 		var height = layer.layout.clientHeight;
@@ -107,10 +109,9 @@ class CanvasRenderingContext extends RenderingContext {
 	override function renderBins(layer: Layer, bins: Array.<Array.<DisplayNode>>): void {
 		bins.forEach(function(bin) {
 			for(var j = 0; j < bin.length; j++) {
-				bin[j]._render(layer._ctx, this);
+				bin[j]._render(this);
 			}
 		});
-		layer._ctx.restore();
 	}
 
 	override function clipDirtyRegions(layer: Layer): void {
@@ -328,7 +329,7 @@ class StreamRenderingContext extends RenderingContext {
 
 		bins.forEach(function(bin) {
 			for(var j = 0; j < bin.length; j++) {
-				bin[j]._render(layer._ctx, this);
+				bin[j]._render(this);
 			}
 		});
 

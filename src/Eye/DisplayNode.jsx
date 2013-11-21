@@ -473,7 +473,7 @@ class DisplayNode {
 		return false;
 	}
 
-	function _render(ctx: CanvasRenderingContext2D, context: RenderingContext): void {
+	function _render(context: RenderingContext): void {
 		if (this._invisible()) {
 			return;
 		}
@@ -496,6 +496,8 @@ class DisplayNode {
 			context.renderDisplayNode2nd(this, canvas, color);
 			return;
 		}
+
+		var ctx = this._layer._ctx;
 		ctx.save();
 		var oldOperation = this._compositeOperation? ctx.globalCompositeOperation: "";
 		if(this._compositeOperation) {
