@@ -13,6 +13,7 @@ import "Tombo.jsx";
 __export__ abstract class RenderingContext {
 	var width: number;
 	var height: number;
+	var id: int;
 
 	function constructor(width: number, height: number) {
 		this.width = width;
@@ -40,6 +41,7 @@ __export__ abstract class RenderingContext {
 	abstract function setTransform(transform: Transform, layer: Layer, lastUpdatedFrame: int): void;
 	abstract function _beginPaintDisplayNode(node: DisplayNode): void;
 	abstract function _endPaintDisplayNode(node: DisplayNode): void;
+	abstract function saveDisplayNodeCaches(nodes: Array.<DisplayNode>): void;
 
 	// Shape
 	abstract function drawShape(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void ;
@@ -250,6 +252,9 @@ class CanvasRenderingContext extends RenderingContext {
 		this._endPaintDisplayNode(node);
 	}
 
+	override function saveDisplayNodeCaches(nodes: Array.<DisplayNode>): void {
+	}
+
 	override function drawShape(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {
 		var ctx = node._layer._ctx;
 		if(canvas) {
@@ -391,6 +396,10 @@ class StreamRenderingContext extends RenderingContext {
 		}
 
 		this._stream.sendRestore(node._layer._id);
+	}
+
+	override function saveDisplayNodeCaches(nodes: Array.<DisplayNode>): void {
+		this._stream.saveDisplayNodeCaches(nodes);
 	}
 
 	override function drawShape(node: DisplayNode, canvas: HTMLCanvasElement, color: int): void {

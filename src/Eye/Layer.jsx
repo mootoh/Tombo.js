@@ -289,6 +289,8 @@ class Layer {
 			}
 
 			var bins = []: Array.<Array.<DisplayNode>>;
+			// var skippedCalcRenderRect = 0;
+			// var calcedRenderRect = 0;
 
 			for(var i = 0; i < this._orderDrawBins.length; i++) {
 				var binIndex = this._orderDrawBins[i] as string;
@@ -305,10 +307,23 @@ class Layer {
 					}
 
 					// update DisplayNode._renderRect here.
-					x._calcRenderRect();
+					if (x._dirty) {
+						x._calcRenderRect();
+						// calcedRenderRect++;
+					}  else {
+						// log 'skip updating calcRenderRect ' + x._id;
+						// skippedCalcRenderRect++;
+					}
 					return this.hasIntersection(x._renderRect);
 				}));
 			}
+
+			// var totalNodes = 0;
+			// for (var i=0; i<bins.length; i++) {
+			// 	totalNodes += bins[i].length;
+			// }
+			// var sContext = context as StreamRenderingContext;
+			// log '[' + sContext._stream.getId() + '] calc:' + calcedRenderRect + ' skip:' + skippedCalcRenderRect + ' total: ' + totalNodes;
 
 			context.renderBins(bins);
 

@@ -161,13 +161,20 @@ class Eye {
 			this._renderingContext.setFillStyle("#505050");
 			this._renderingContext.fillRect(0, 0, this._width, this._height);
 		}
-		
+
+		// var nodes = [] : Array.<DisplayNode>;
 		this._layerList.forEach((layer) -> {
 			// todo: check dirty flag
 			this._renderingContext.beginLayer(layer);
 			layer._render(this._renderingContext);
+			// for (var i in layer._drawBins) {
+			// 	nodes = nodes.concat(layer._drawBins[i]);
+			// }
 			this._renderingContext.endLayer(layer);
 		});
+
+		// this._renderingContext.saveDisplayNodeCaches(nodes);
+
 		this._renderingContext.endEye();
 	}
 

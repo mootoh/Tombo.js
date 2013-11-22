@@ -184,6 +184,7 @@ class DisplayNode {
 	}
 	
 	function _setLayer(layer: Layer): void {
+		// log 'Node[' + this._id + '] setLayer';
 		if(this._layer == layer) {
 			return;
 		}
@@ -226,6 +227,7 @@ class DisplayNode {
 	 * @param value the primary z-order value. the smaller, the more behind
 	 */
 	function setDrawBin(value: int): void {
+		// log 'Node[' + this._id + '] setDrawBin ' + value;
 		if(this._drawBin == value) {
 			return;
 		}
@@ -252,6 +254,11 @@ class DisplayNode {
 		if(this._drawOrder == value) {
 			return;
 		}
+		if (Math.abs(this._drawOrder - value) < 5) {
+			// log 'Node[' + this._id + '] setDrawOrder too close, skip' + this._drawOrder + ' to ' + value;
+			return;
+		}
+		// log 'Node[' + this._id + '] setDrawOrder ' + this._drawOrder + ' to ' + value;
 		this._drawOrder = value;
 		if(this._layer) {
 			this._layer._dirtyDrawBin(this._drawBin);

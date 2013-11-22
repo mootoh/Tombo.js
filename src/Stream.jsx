@@ -22,6 +22,8 @@ interface Stream {
 	function sendAlpha(layerId: int, alpha: number): void;
 	function sendRestore(layerId: int): void;
 
+	function saveDisplayNodeCaches(nodes: Array.<DisplayNode>): void;
+
 	// Shape
 	function sendShape(layerId: int, nodeId: int, shape: Shape): void;
 }
