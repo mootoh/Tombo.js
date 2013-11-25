@@ -58,6 +58,9 @@ class DisplayNode {
 	var _renderTransform: Transform; // cache
 	var _lastChangedFrame = 0 as int;
 
+	var _geometryUpdated = true as boolean;
+	var _intersectedPrev = true as boolean;
+
 	static const USE_RENDER_TRANSFORM = true;
 
 	/**
@@ -133,6 +136,7 @@ class DisplayNode {
 				this._transform.setPosition(left, top);
 				this._setDirtyRect(true);
 				this._addDirtyRectangle();
+				this._geometryUpdated = true;
 			}
 			return;
 		}
@@ -148,6 +152,7 @@ class DisplayNode {
 				this._transform.setScale(scaleX, scaleY);
 				this._setDirtyRect(true);
 				this._addDirtyRectangle();
+				this._geometryUpdated = true;
 			}
 			return;
 		}
@@ -165,6 +170,7 @@ class DisplayNode {
 				this._transform.setRotation(rotation);
 				this._setDirtyRect(true);
 				this._addDirtyRectangle();
+				this._geometryUpdated = true;
 			}
 			return;
 		}
@@ -181,6 +187,7 @@ class DisplayNode {
 		this._transform.setMatrix(matrix);
 		this._setDirtyRect(true);
 		this._addDirtyRectangle();
+		this._geometryUpdated = true;
 	}
 	
 	function _setLayer(layer: Layer): void {
@@ -331,6 +338,7 @@ class DisplayNode {
 				this._anchorX = anchorX;
 				this._anchorY = anchorY;
 				this._addDirtyRectangle();
+				this._geometryUpdated = true;
 			}
 			return;
 		}
@@ -348,6 +356,7 @@ class DisplayNode {
 					this.shape.bounds.width = width;
 					this.shape.bounds.height = height;
 					this._addDirtyRectangle();
+					this._geometryUpdated = true;
 				}
 				return;
 			}

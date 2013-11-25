@@ -8,6 +8,7 @@ import "Eye.jsx";
 import "RenderingContext.jsx";
 import "../Tombo.jsx";
 import "../BasicTypes.jsx";
+import "Shapes/AnimationImageShape.jsx";
 
 /**
  * Layer class
@@ -289,6 +290,7 @@ class Layer {
 			}
 
 			var bins = []: Array.<Array.<DisplayNode>>;
+
 			// var skippedCalcRenderRect = 0;
 			// var calcedRenderRect = 0;
 
@@ -306,15 +308,23 @@ class Layer {
 						return false;
 					}
 
+					var geometryUpdated = x._geometryUpdated;
+					var y = x.parent;
+					while (y) {
+						geometryUpdated = geometryUpdated || y._geometryUpdated;
+						y = y.parent;
+					}
+
 					// update DisplayNode._renderRect here.
-					if (x._dirty) {
+					if (x._intersectedPrev && x._dirty || !x._intersectedPrev && geometryUpdated && x._dirty) {
 						x._calcRenderRect();
 						// calcedRenderRect++;
 					}  else {
-						// log 'skip updating calcRenderRect ' + x._id;
 						// skippedCalcRenderRect++;
 					}
-					return this.hasIntersection(x._renderRect);
+
+					x._intersectedPrev = this.hasIntersection(x._renderRect);
+					return x._intersectedPrev;
 				}));
 			}
 
@@ -322,8 +332,7 @@ class Layer {
 			// for (var i=0; i<bins.length; i++) {
 			// 	totalNodes += bins[i].length;
 			// }
-			// var sContext = context as StreamRenderingContext;
-			// log '[' + sContext._stream.getId() + '] calc:' + calcedRenderRect + ' skip:' + skippedCalcRenderRect + ' total: ' + totalNodes;
+			// log 'Layer#' + this._id + ' calc:' + calcedRenderRect + ' skip:' + skippedCalcRenderRect + ' total: ' + totalNodes;
 
 			context.renderBins(bins);
 

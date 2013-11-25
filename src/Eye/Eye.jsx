@@ -171,6 +171,11 @@ class Eye {
 			// 	nodes = nodes.concat(layer._drawBins[i]);
 			// }
 			this._renderingContext.endLayer(layer);
+			for (var i in layer._drawBins) {
+				layer._drawBins[i].forEach((node) -> {
+					node._geometryUpdated = false;
+				});
+			}
 		});
 
 		// this._renderingContext.saveDisplayNodeCaches(nodes);
