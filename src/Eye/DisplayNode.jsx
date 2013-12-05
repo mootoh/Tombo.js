@@ -60,6 +60,8 @@ class DisplayNode {
 	var _renderTransform: Transform; // cache
 	var _lastChangedFrame = 0 as int;
 
+	var _subLayer: SubLayer;
+
 	static const USE_RENDER_TRANSFORM = true;
 
 	/**
@@ -136,6 +138,10 @@ class DisplayNode {
 				this._setDirtyRect(true);
 				this._addDirtyRectangle();
 				this._geometryUpdated = true;
+
+				if (this._layer) {
+					this._layer._updateSubLayer(this);
+				}
 			} else {
 			}
 			return;
@@ -264,7 +270,7 @@ class DisplayNode {
 		}
 		this._drawOrder = value;
 		if(this._layer) {
-			this._layer._dirtyDrawBin(this._drawBin);
+			this._layer._dirtyDrawBin(this);
 		}
 	}
 	/**
